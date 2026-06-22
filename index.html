@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сибириус Квест (Прототип)</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #121212; color: #E0E0E0; }
+        
+        /* Основной контейнер-карточка в стиле Material/Minimalism */
+        .container { max-width: 440px; margin: 40px auto; padding: 30px; background: #1E1E1E; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; box-sizing: border-box; }
+        
+        h2 { color: #00FF88; margin-top: 0; font-weight: 600; }
+        p { line-height: 1.6; color: #A0A0A0; font-size: 16px; }
+        
+        .btn { width: 100%; padding: 16px; background: #00FF88; color: #121212; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s ease; margin-top: 20px; }
+        .btn:disabled { background: #333333; color: #666666; cursor: not-allowed; }
+        .btn:active { transform: scale(0.98); }
+
+        .progress-bar { font-size: 14px; color: #00FF88; letter-spacing: 1px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; }
+        
+        /* Переключение экранов */
+        #game-screen { display: none; }
+        #final-screen { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="geo-screen">
+            <h2>Сибириус Квест</h2>
+            <p id="status-text">Проверяем спутники GPS...</p>
+            <button id="start-btn" class="btn" disabled>Начать квест</button>
+        </div>
+
+        <div id="game-screen">
+            <div class="progress-bar">Задание: <span id="score">1</span> из 4</div>
+            <h3 id="quest-title">Шаг 1: Разминка</h3>
+            <p id="quest-text">Найди велопарковку у здания на Промышленной 19. Как будешь на месте — жми кнопку.</p>
+            <button id="next-btn" class="btn">Я на месте, нашёл!</button>
+        </div>
+
+        <div id="final-screen">
+            <h2>Квест пройден! 🎉</h2>
+            <p>Отличная работа! Ты успешно обошёл все ключевые точки Мастерской талантов "Сибириус". Забери свой приз у организаторов.</p>
+        </div>
+    </div>
+
+    <script>
+        // Переключатель теста: true — кнопка старта активна сразу, false — честный GPS
+        const DEBUG_MODE = false; 
+
+        const SIBIRIUS_LAT = 61.0118;
+        const SIBIRIUS_LON = 69.0535;
+        
+        let currentStep = 1;
+
+        // Массив с нашими 4 заданиями (можешь менять текст как хочешь)
+        const questSteps = [
+            { title: "Шаг 1: Велопарковка", text: "Найди велопарковку у правого крыла здания. Осмотрись там." },
+            { title: "Шаг 2: Главный вход", text: "Отлично! Теперь иди к главному входу в Сибириус и найди там вывеску." },
+            { title: "Шаг 3: Стенд в холле", text: "Заходи внутрь! В холле первого этажа найди большой информационный стенд." },
+            { title: "Шаг 4: Финальная точка", text: "Почти у цели. Поднимись на второй этаж к коворкингу и найди синий пуфик." }
+        ];
+
+        // 1. Проверка GPS (оставляем старую добрую математику)
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        }
+
+        if (DEBUG_MODE) {
+            document.getElementById('status-text').innerText = "Радиус Промышленной 19 подтверждён (Тест)";
+            document.getElementById('start-btn').disabled = false;
+        } else {
+
+    // Настройки для GPS-датчика
+    const gpsOptions = {
+        enableHighAccuracy: true, // Искать максимально точно (нужно для улицы)
+        timeout: 6000,            // Если за 6 секунд GPS не ответил — прекратить ожидать
+        maximumAge: 0             // Не использовать старые кэшированные координаты
+    };
+
+    document.getElementById('status-text').innerText = "Поиск спутников GPS... Запрос отправлен.";
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const userLat = position.coords.latitude;
+            const userLon = position.coords.longitude;
+            const distance = getDistance(userLat, userLon, SIBIRIUS_LAT, SIBIRIUS_LON);
+
+            if (distance <= 1.0) {
+                document.getElementById('status-text').innerText = "Ты на месте! Радиус подтвержден.";
+                document.getElementById('start-btn').disabled = false;
+            } else {
+                document.getElementById('status-text').innerText = `Ты слишком далеко. До Сибириуса осталось ${distance.toFixed(2)} км.`;
+            }
+        }, 
+        (error) => {
+            // Если что-то пошло не так — мы выведем понятную причину вместо зависания
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    document.getElementById('status-text').innerText = "Ошибка: Ты запретил сайту доступ к GPS в настройках браузера.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    document.getElementById('status-text').innerText = "Ошибка: Сеть недоступна или GPS-сигнал слишком слабый.";
+                    break;
+                case error.TIMEOUT:
+                    document.getElementById('status-text').innerText = "Ошибка: Время ожидания GPS истекло. Компьютер в комнате не видит спутники.";
+                    break;
+                default:
+                    document.getElementById('status-text').innerText = "Произошла неизвестная ошибка GPS.";
+                    break;
+            }
+        }, 
+        gpsOptions // передаем наши настройки
+    );
+}
+
+
+        // 2. Логика переключения экранов и шагов квеста
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.getElementById('geo-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            updateQuestUI();
+        });
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            currentStep++;
+            if (currentStep <= 4) {
+                updateQuestUI();
+            } else {
+                // Если шаги кончились — показываем финал
+                document.getElementById('game-screen').style.display = 'none';
+                document.getElementById('final-screen').style.display = 'block';
+            }
+        });
+
+        function updateQuestUI() {
+            const data = questSteps[currentStep - 1];
+            document.getElementById('score').innerText = currentStep;
+            document.getElementById('quest-title').innerText = data.title;
+            document.getElementById('quest-text').innerText = data.text;
+        }
+    </script>
+</body>
+</html>
