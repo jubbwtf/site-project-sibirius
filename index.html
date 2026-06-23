@@ -30,13 +30,14 @@
             z-index: 1 !important;
         }
 
-        /* Полноэкранный холст для 3D-графики */
+
+/* Полноэкранный холст для 3D-графики */
         .a-canvas {
-            width: 100vw !important;
-            height: 100vh !important;
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
             z-index: 2 !important;
         }
         
@@ -124,8 +125,8 @@
         </div>
     </div>
 
-<a-scene arjs="sourceType: webcam; debugUIEnabled: false;" loading-screen="enabled: false;">
-        
+<a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" loading-screen="enabled: false;">
+
         <a-marker preset="hiro" id="marker-велопарковка">
             <a-box position="0 0.5 0" material="color: #00FF88; opacity: 0.8;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
         </a-marker>
