@@ -3,71 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Сибириус Квест (AR Прототип)</title>
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <title>Сибириус Квест AR</title>
+    
+    <!-- Меняем библиотеки на unpkg (работает в РФ без ВПН идеально) -->
+    <script src="https://unpkg.com/aframe@1.3.0/dist/aframe-master.min.js"></script>
+    <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
     
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #121212; color: #E0E0E0; overflow: hidden; }
+        /* Убираем жесткий фон у body, чтобы не перекрывать видеокамеру */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
         
-        /* Стили интерфейса поверх AR-камеры */
-        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; padding: 20px; }
+        /* Плотные шторы-оверлеи для Экрана 1 и Экрана 3 */
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #121212;
+            z-index: 999; /* Поверх всего */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            padding: 20px;
+        }
+
+        /* Игровая плашка (Экран 2) — аккуратное окошко снизу, не мешающее камере */
+        .game-overlay {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 420px;
+            background: rgba(25, 25, 25, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            text-align: center;
+            z-index: 998; /* Чуть ниже штор, но выше камеры */
+            box-sizing: border-box;
+            display: none;
+        }
         
-        .container { pointer-events: auto; max-width: 440px; margin: auto; padding: 25px; background: rgba(30, 30, 30, 0.90); backdrop-filter: blur(10px); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; box-sizing: border-box; width: 100%; }
+        .container { width: 100%; max-width: 400px; text-align: center; }
+        h2, h3 { color: #00FF88; margin-top: 0; font-weight: 600; }
+        p { line-height: 1.6; color: #E0E0E0; font-size: 16px; }
         
-        h2 { color: #00FF88; margin-top: 0; font-weight: 600; }
-        p { line-height: 1.6; color: #A0A0A0; font-size: 16px; margin-bottom: 10px; }
-        
-        .btn { width: 100%; padding: 16px; background: #00FF88; color: #121212; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s ease; margin-top: 10px; }
+        .btn { width: 100%; padding: 16px; background: #00FF88; color: #121212; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 15px; }
         .btn:disabled { background: #333333; color: #666666; cursor: not-allowed; }
 
-        .progress-bar { font-size: 14px; color: #00FF88; letter-spacing: 1px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; }
-        
-        /* Контейнер для AR сцены, прячем его до старта игры */
-        #ar-container { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        #game-screen, #final-screen { display: none; }
+        .progress-bar { font-size: 13px; color: #00FF88; letter-spacing: 1px; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; }
     </style>
 </head>
 <body>
 
-    <div class="ui-layer">
-        
-        <div id="geo-screen" class="container">
+    <!-- ================= ЭКРАН 1: ШТОРА ГЕОЛОКАЦИИ ================= -->
+    <div id="geo-screen" class="fullscreen-overlay">
+        <div class="container">
             <h2>Сибириус Квест</h2>
-            <p id="status-text">Проверяем спутники GPS...</p>
+            <p id="status-text">Синхронизация с GPS...</p>
             <button id="start-btn" class="btn" disabled>Начать квест</button>
         </div>
+    </div>
 
-        <div id="game-screen" class="container">
-            <div class="progress-bar">Задание: <span id="score">1</span> из 4</div>
-            <h3 id="quest-title">Шаг 1: Велопарковка</h3>
-            <p id="quest-text">Загрузка задания...</p>
-            <p style="color: #00FF88; font-size: 14px; font-weight: bold;">Наведи камеру на маркер!</p>
-        </div>
+    <!-- ================= ЭКРАН 2: ИГРОВАЯ ПЛАШКА ПОД КАМЕРОЙ ================= -->
+    <div id="game-screen" class="game-overlay">
+        <div class="progress-bar">Задание: <span id="score">1</span> из 4</div>
+        <h3 id="quest-title">Загрузка...</h3>
+        <p id="quest-text">Загрузка...</p>
+        <p style="color: #00FF88; font-size: 14px; font-weight: bold; margin-top: 10px; letter-spacing: 0.5px;">📸 Наведи камеру на маркер</p>
+    </div>
 
-        <div id="final-screen" class="container">
+    <!-- ================= ЭКРАН 3: ШТОРА ФИНАЛА ================= -->
+    <div id="final-screen" class="fullscreen-overlay" style="display: none;">
+        <div class="container">
             <h2>Квест пройден! 🎉</h2>
-            <p>Ты настоящий AR-эксперт. Все маркеры найдены, а точки Сибириуса пройдены!</p>
+            <p>Ты успешно отыскал все скрытые AR-метки в Сибириусе. Заслуженная награда ждёт тебя на стойке регистрации!</p>
         </div>
+    </div>
+
+    <!-- ================= AR СЦЕНА (РАБОТАЕТ ВСЕГДА НА ФОНЕ) ================= -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;">
         
-    </div>
+        <!-- Маркер 1: Hiro -->
+        <a-marker preset="hiro" id="marker-велопарковка">
+            <a-box position="0 0.5 0" material="color: #00FF88; opacity: 0.8;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
+        </a-marker>
 
-    <div id="ar-container">
-        <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-            
-            <a-marker preset="hiro" id="marker-велопарковка">
-                <a-box position="0 0.5 0" material="color: #00FF88; opacity: 0.8;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
-            </a-marker>
+        <!-- Маркер 2: Kanji -->
+        <a-marker preset="kanji" id="marker-вход">
+            <a-box position="0 0.5 0" material="color: #0088FF; opacity: 0.8;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
+        </a-marker>
 
-            <a-marker preset="kanji" id="marker-вход">
-                <a-box position="0 0.5 0" material="color: #0088FF; opacity: 0.8;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
-            </a-marker>
-
-            <a-entity camera></a-entity>
-        </a-scene>
-    </div>
-
+        <a-entity camera></a-entity>
+    </a-scene>
+    <!-- ================= ЛОГИКА КВЕСТА ================= -->
     <script>
         // Переключатель теста: true — кнопка старта активна сразу, false — честный GPS
         const DEBUG_MODE = false; 
@@ -77,13 +108,11 @@
         
         let currentStep = 1;
 
-        // Настройки квеста: связываем текстовое задание с ID маркера в коде
         const questSteps = [
-            { title: "Шаг 1: Велопарковка", text: "Подойди к велопарковке и наведи камеру на маркер HIRO.", markerId: "marker-велопарковка" },
-            { title: "Шаг 2: Главный вход", text: "Отлично! Теперь иди к главному входу здания и найди там маркер KANJI.", markerId: "marker-вход" },
-            // Для шагов 3 и 4 пока оставим старую добрую кнопку, пока не сгенерируем новые маркеры
-            { title: "Шаг 3: Стенд в холле", text: "Зайди внутрь! Найди информационный стенд. (Для теста этот шаг закроется автоматически через 5 сек)", markerId: null },
-            { title: "Шаг 4: Финальная точка", text: "Поднимись на второй этаж к коворкингу и найди синий пуфик. (Тестовый шаг)", markerId: null }
+            { title: "Шаг 1: Велопарковка", text: "Найди маркер HIRO на велопарковке Сибириуса.", markerId: "marker-велопарковка" },
+            { title: "Шаг 2: Главный вход", text: "Отлично! Теперь иди к главному входу и отсканируй маркер KANJI.", markerId: "marker-вход" },
+            { title: "Шаг 3: Стенд в холле", text: "Зайди внутрь. Около стенда откроется третий шаг (Тестовое автопрохождение через 5 сек)", markerId: null },
+            { title: "Шаг 4: Финальная точка", text: "Поднимись к коворкингу на второй этаж. (Тестовое автопрохождение через 5 сек)", markerId: null }
         ];
 
         function getDistance(lat1, lon1, lat2, lon2) {
@@ -94,41 +123,38 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
         }
 
-        // Проверка GPS геолокации
+        // Логика GPS
         if (DEBUG_MODE) {
-            document.getElementById('status-text').innerText = "Радиус Сибириуса подтверждён (Тест)";
+            document.getElementById('status-text').innerText = "Локация подтверждена (Режим отладки)";
             document.getElementById('start-btn').disabled = false;
         } else {
-            const gpsOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
             navigator.geolocation.getCurrentPosition((position) => {
                 const distance = getDistance(position.coords.latitude, position.coords.longitude, SIBIRIUS_LAT, SIBIRIUS_LON);
-                if (distance <= 0.1) { // 100 метров от здания
-                    document.getElementById('status-text').innerText = "Ты на месте! Квест доступен.";
+                if (distance <= 0.1) {
+                    document.getElementById('status-text').innerText = "Добро пожаловать в Сибириус!";
                     document.getElementById('start-btn').disabled = false;
                 } else {
-                    document.getElementById('status-text').innerText = `Слишком далеко. До Сибириуса: ${distance.toFixed(2)} км.`;
+                    document.getElementById('status-text').innerText = `До Сибириуса осталось ${distance.toFixed(2)} км.`;
                 }
             }, () => {
-                document.getElementById('status-text').innerText = "Включи GPS для игры.";
-            }, gpsOptions);
+                document.getElementById('status-text').innerText = "Включи геопозицию в браузере.";
+            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
         }
 
-        // Старт игры: включаем камеру
+        // Клик по кнопке «Старт» — убираем плотную штору №1
         document.getElementById('start-btn').addEventListener('click', () => {
-            document.getElementById('geo-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'block';
-            document.getElementById('ar-container').style.display = 'block'; // Включаем AR камеру
+            document.getElementById('geo-screen').style.display = 'none'; // Прячем штору
+            document.getElementById('game-screen').style.display = 'block'; // Показываем плашку игры
             updateQuestUI();
         });
 
-        // Функция переключения шагов
         function nextStep() {
             currentStep++;
             if (currentStep <= 4) {
                 updateQuestUI();
             } else {
+                // Финал — прячем плашку, опускаем плотную штору №3
                 document.getElementById('game-screen').style.display = 'none';
-                document.getElementById('ar-container').style.display = 'none'; // Выключаем камеру в конце
                 document.getElementById('final-screen').style.display = 'block';
             }
         }
@@ -139,28 +165,25 @@
             document.getElementById('quest-title').innerText = data.title;
             document.getElementById('quest-text').innerText = data.text;
 
-            // Если у шага нет физического AR-маркера (для тестов 3 и 4 шага), симулируем прохождение
+            // Если маркер отсутствует (шаги 3 и 4), мотаем дальше для теста
             if (!data.markerId) {
                 setTimeout(() => {
-                    alert(`Тестовое автопрохождение для: ${data.title}`);
                     nextStep();
                 }, 5000);
             }
         }
 
-        // ================= ЛОГИКА СКАНИРОВАНИЯ КАМЕРОЙ =================
-        // Слушаем маркер Велопарковки (Hiro)
+        // Обработка сканирования маркеров
         document.getElementById('marker-велопарковка').addEventListener('markerFound', () => {
             if (currentStep === 1) {
-                alert("Маркер Велопарковки найден! Шаг 1 пройден. 🎉");
+                alert("Велопарковка засчитана! Переходим к шагу 2. 🔥");
                 nextStep();
             }
         });
 
-        // Слушаем маркер Главного входа (Kanji)
         document.getElementById('marker-вход').addEventListener('markerFound', () => {
             if (currentStep === 2) {
-                alert("Маркер Главного входа найден! Шаг 2 пройден. 🚀");
+                alert("Главный вход засчитан! Квест почти пройден! 🚀");
                 nextStep();
             }
         });
