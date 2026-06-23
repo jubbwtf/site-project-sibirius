@@ -19,26 +19,32 @@
             background-color: #000000 !important; /* Убираем белую подложку самого браузера */
         }
         
-        /* Полноэкранный адаптивный видеопоток камеры */
+/* Полноэкранный адаптивный видеопоток камеры */
         video, #arjs-video {
             width: 100vw !important;
             height: 100vh !important;
-            object-fit: cover !important;
+            min-width: 100vw !important;
+            min-height: 100vh !important;
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
-            z-index: 1 !important;
+            margin: 0 !important; /* Убиваем кривые отступы, которые генерирует AR.js */
+            padding: 0 !important;
+            transform: none !important;
+            object-fit: cover !important;
+            z-index: 0 !important;
         }
 
-
-/* Полноэкранный холст для 3D-графики */
+        /* Холст 3D-графики */
         .a-canvas {
+            width: 100vw !important;
+            height: 100vh !important;
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            z-index: 2 !important;
+            margin: 0 !important;
+            z-index: 1 !important;
+            background-color: transparent !important;
         }
         
         /* Плотные экраны-заглушки (Старт и Финал) */
