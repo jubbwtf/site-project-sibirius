@@ -5,56 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Сибириус Квест AR</title>
     
-    <script src="https://unpkg.com/aframe@1.3.0/dist/aframe-master.min.js"></script>
-    <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
     <style>
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            overflow: hidden; background-color: #000000 !important; 
-        }
-        
-        video, #arjs-video {
-            width: 100vw !important; height: 100vh !important;
-            min-width: 100vw !important; min-height: 100vh !important;
-            position: fixed !important; top: 0 !important; left: 0 !important;
-            margin: 0 !important; padding: 0 !important;
-            transform: none !important; object-fit: cover !important; z-index: 0 !important;
-        }
-
-        .a-canvas {
-            width: 100vw !important; height: 100vh !important;
-            position: fixed !important; top: 0 !important; left: 0 !important;
-            margin: 0 !important; z-index: 1 !important; background-color: transparent !important;
-        }
-        
-        .fullscreen-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #121212; z-index: 9999; display: flex;
-            justify-content: center; align-items: center; box-sizing: border-box; padding: 20px;
-        }
-
-        .game-overlay {
-            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.92);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            border-radius: 24px; padding: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.7);
-            text-align: center; z-index: 9998; box-sizing: border-box;
-            display: none; border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .container { width: 100%; }
-        h2, h3 { color: #00FF88; margin-top: 0; font-weight: 600; margin-bottom: 10px; }
-        p { line-height: 1.6; color: #E0E0E0; font-size: 16px; margin: 5px 0; }
-        
-        .btn { 
-            width: 100%; padding: 16px; background: #00FF88; color: #121212; 
-            border: none; border-radius: 14px; font-size: 16px; 
-            font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 15px;
-        }
-        .btn:disabled { background: #333333; color: #666666; cursor: not-allowed; }
-
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; background-color: #000000 !important; }
+        video, #arjs-video { width: 100vw !important; height: 100vh !important; min-width: 100vw !important; min-height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; margin: 0 !important; padding: 0 !important; object-fit: cover !important; z-index: 0 !important; }
+        .a-canvas { width: 100vw !important; height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; margin: 0 !important; z-index: 1 !important; background-color: transparent !important; }
+        .fullscreen-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #121212; z-index: 9999; display: flex; justify-content: center; align-items: center; box-sizing: border-box; padding: 20px; }
+        .game-overlay { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 24px; padding: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.7); text-align: center; z-index: 9998; box-sizing: border-box; display: none; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .container { width: 100%; } h2, h3 { color: #00FF88; margin-top: 0; font-weight: 600; margin-bottom: 10px; } p { line-height: 1.6; color: #E0E0E0; font-size: 16px; margin: 5px 0; }
+        .btn { width: 100%; padding: 16px; background: #00FF88; color: #121212; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 15px; } .btn:disabled { background: #333333; color: #666666; cursor: not-allowed; }
         .progress-bar { font-size: 13px; color: #00FF88; letter-spacing: 1px; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; }
         .a-enter-vr, .a-loader-title { display: none !important; }
     </style>
@@ -85,25 +46,25 @@
 
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" loading-screen="enabled: false;">
 
-        <a-marker preset="hiro" id="marker-велопарковка">
+        <a-marker preset="hiro" id="marker-step1">
             <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
                 <a-image src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" position="0 0.5 0" rotation="-90 0 0" scale="1.5 1.5 1.5"></a-image>
             </a-entity>
         </a-marker>
 
-        <a-marker preset="kanji" id="marker-вход">
+        <a-marker preset="kanji" id="marker-step2">
             <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 3000">
                 <a-text value="GREAT JOB!" color="#00FF88" position="0 0.5 0" rotation="-90 0 0" align="center" scale="2 2 2"></a-text>
             </a-entity>
         </a-marker>
 
-        <a-marker type="pattern" url="pattern-step3.patt" id="marker-стенд">
+        <a-marker type="pattern" url="pattern-step3.patt" id="marker-step3">
             <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
                 <a-image src="step3.png" position="0 0.5 0" rotation="-90 0 0" scale="1.5 1.5 1.5"></a-image>
             </a-entity>
         </a-marker>
 
-        <a-marker type="pattern" url="pattern-step4.patt" id="marker-коворкинг">
+        <a-marker type="pattern" url="pattern-step4.patt" id="marker-step4">
             <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
                 <a-image src="step4.png" position="0 0.5 0" rotation="-90 0 0" scale="2 2 2"></a-image>
             </a-entity>
@@ -119,12 +80,11 @@
         
         let currentStep = 1;
 
-        // Полноценные шаги без фейковых таймеров
         const questSteps = [
-            { title: "Шаг 1: Велопарковка", text: "Найди маркер HIRO около велопарковки Сибириуса.", markerId: "marker-велопарковка" },
-            { title: "Шаг 2: Главный вход", text: "Отлично! Теперь иди к главному входу и найди там маркер с символом.", markerId: "marker-вход" },
-            { title: "Шаг 3: Кофемашина в холле", text: "Зайди внутрь здания и найди кастомный маркер около кофемашины.", markerId: "marker-стенд" },
-            { title: "Шаг 4: Коворкинг", text: "Поднимись на второй этаж. Найди финальный маркер в коворкинге.", markerId: "marker-коворкинг" }
+            { title: "Шаг 1: Велопарковка", text: "Найди маркер HIRO около велопарковки Сибириуса." },
+            { title: "Шаг 2: Главный вход", text: "Отлично! Теперь иди к главному входу и найди там маркер с символом." },
+            { title: "Шаг 3: Кофемашина в холле", text: "Зайди внутрь здания и найди кастомный маркер около кофемашины." },
+            { title: "Шаг 4: Коворкинг", text: "Поднимись на второй этаж. Найди финальный маркер в коворкинге." }
         ];
 
         function getDistance(lat1, lon1, lat2, lon2) {
@@ -175,34 +135,36 @@
             document.getElementById('quest-text').innerText = data.text;
         }
 
-        // Обработчики успешного сканирования AR-маркеров (теперь полноценные для всех 4)
-        document.getElementById('marker-велопарковка').addEventListener('markerFound', () => {
-            if (currentStep === 1) {
+        // ==========================================
+        // БРОНЕБОЙНЫЙ ЧЕКЕР МАРКЕРОВ (ВМЕСТО СОБЫТИЙ)
+        // ==========================================
+        setInterval(() => {
+            // Если игра еще не началась или уже закончилась - ничего не делаем
+            if (document.getElementById('game-screen').style.display !== 'block') return;
+
+            let m1 = document.getElementById('marker-step1');
+            let m2 = document.getElementById('marker-step2');
+            let m3 = document.getElementById('marker-step3');
+            let m4 = document.getElementById('marker-step4');
+
+            // object3D.visible становится true только тогда, когда камера реально видит маркер!
+            if (currentStep === 1 && m1 && m1.object3D.visible) {
                 alert("Велопарковка засчитана! Переходим к шагу 2. 🔥");
                 nextStep();
             }
-        });
-
-        document.getElementById('marker-вход').addEventListener('markerFound', () => {
-            if (currentStep === 2) {
+            else if (currentStep === 2 && m2 && m2.object3D.visible) {
                 alert("Главный вход засчитан! Идем внутрь. 🚀");
                 nextStep();
             }
-        });
-
-        document.getElementById('marker-стенд').addEventListener('markerFound', () => {
-            if (currentStep === 3) {
+            else if (currentStep === 3 && m3 && m3.object3D.visible) {
                 alert("Кофемашина найдена! Остался последний рывок. ⚡");
                 nextStep();
             }
-        });
-
-        document.getElementById('marker-коворкинг').addEventListener('markerFound', () => {
-            if (currentStep === 4) {
-                // Финал!
+            else if (currentStep === 4 && m4 && m4.object3D.visible) {
+                alert("КВЕСТ ПРОЙДЕН! ТЫ КРАСАВЧИК! 🎉");
                 nextStep();
             }
-        });
+        }, 500); // Проверяем 2 раза в секунду
     </script>
 </body>
 </html>
