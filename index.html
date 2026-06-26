@@ -5,20 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Сибириус Квест AR</title>
 
-    <!-- FIX 1: Use stable, versioned CDN URLs. raw.githack.com was causing slow loads and CORS errors. -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/build/aframe-ar.min.js"></script>
+    <!--
+      FIX 1: CORRECT VERSION PAIR — this is the #1 cause of all your errors.
+        - A-Frame 1.6.0  (from aframe.io — not blocked in Russia)
+        - AR.js 3.4.7    (the ONLY version that works with A-Frame 1.6.0)
+        - AR.js via jsdelivr.net/gh/ — GitHub-backed CDN, accessible in Russia
+      
+      FIX 2: aframe-ar.min.js (marker only, no NFT) — smaller, faster, no dead code
+    -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.min.js"></script>
 
     <style>
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
+            width: 100%; height: 100%;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden;
             background: #000;
         }
 
-        /* FIX 2: Force camera video to fill screen correctly on iOS & Android */
+        /* Camera feed — fills entire screen on iOS + Android */
         video, #arjs-video {
             width: 100vw !important;
             height: 100vh !important;
@@ -36,10 +44,10 @@
             background: transparent !important;
         }
 
-        /* Hide A-Frame VR button and loader */
+        /* Hide A-Frame chrome */
         .a-enter-vr, .a-loader-title, .a-orientation-modal { display: none !important; }
 
-        /* ---- Screens ---- */
+        /* ── Screens ───────────────────────────────────── */
         .fullscreen-overlay {
             position: fixed; top: 0; left: 0;
             width: 100vw; height: 100vh;
@@ -50,8 +58,8 @@
         }
         .container { width: 100%; max-width: 400px; text-align: center; }
 
-        h2 { color: #00FF88; margin: 0 0 12px; font-size: 26px; font-weight: 700; }
-        h3 { color: #00FF88; margin: 0 0 8px; font-size: 18px; font-weight: 600; }
+        h2 { color: #00FF88; font-size: 26px; font-weight: 700; margin-bottom: 12px; }
+        h3 { color: #00FF88; font-size: 18px; font-weight: 600; margin-bottom: 8px; }
         p  { color: #E0E0E0; font-size: 15px; line-height: 1.6; margin: 6px 0; }
 
         .btn {
@@ -60,17 +68,17 @@
             border: none; border-radius: 14px;
             font-size: 16px; font-weight: 700;
             cursor: pointer; margin-top: 18px;
-            transition: opacity .2s;
+            transition: opacity .15s;
         }
         .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
-        .btn:not(:disabled):active { opacity: .8; }
+        .btn:not(:disabled):active { opacity: .75; }
 
-        /* ---- In-game HUD (bottom card) ---- */
+        /* ── In-game HUD ───────────────────────────────── */
         .game-overlay {
             position: fixed;
             bottom: 32px; left: 50%; transform: translateX(-50%);
             width: 90%; max-width: 400px;
-            background: rgba(18, 18, 18, 0.93);
+            background: rgba(18,18,18,0.93);
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
             border-radius: 24px;
@@ -88,21 +96,19 @@
         }
         .hint { color: #00FF88; font-size: 13px; font-weight: 600; margin-top: 10px; }
 
-        /* FIX 3: Custom toast replaces alert() which was blocking the AR thread */
+        /* ── Toast — replaces alert() which kills camera thread ─ */
         .toast {
             position: fixed;
             top: 40px; left: 50%; transform: translateX(-50%);
             background: #00FF88; color: #121212;
-            padding: 14px 24px; border-radius: 50px;
+            padding: 14px 26px; border-radius: 50px;
             font-size: 15px; font-weight: 700;
             z-index: 99999;
-            box-shadow: 0 6px 24px rgba(0,255,136,.4);
-            opacity: 0;
-            transition: opacity .3s;
+            box-shadow: 0 6px 24px rgba(0,255,136,.45);
+            opacity: 0; transition: opacity .3s;
             pointer-events: none;
             white-space: nowrap;
-            max-width: 90vw;
-            text-align: center;
+            max-width: 90vw; text-align: center;
         }
         .toast.show { opacity: 1; }
     </style>
@@ -134,18 +140,22 @@
     </div>
 </div>
 
-<!-- Toast notification (replaces blocking alert) -->
+<!-- Non-blocking toast notification -->
 <div id="toast" class="toast"></div>
 
-<!-- FIX 4: vr-mode-ui="enabled:false" stops A-Frame loading WebVR polyfills (faster startup) -->
+<!--
+  FIX 3: vr-mode-ui disabled → no WebVR polyfill load (faster startup, no black half-screen)
+  FIX 4: No <a-text> anywhere → eliminates the Roboto-msdf.json 404 crash that broke markers
+          Using <a-plane> with color instead — zero external font dependency
+-->
 <a-scene
     embedded
     vr-mode-ui="enabled: false"
-    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
-    loading-screen="enabled: false;"
+    arjs="sourceType: webcam; debugUIEnabled: false;"
+    loading-screen="enabled: false"
     renderer="logarithmicDepthBuffer: true; precision: medium;"
 >
-    <!-- Step 1 — HIRO marker (built-in, always works, no file needed) -->
+    <!-- STEP 1 — built-in HIRO preset, no files needed -->
     <a-marker preset="hiro" id="marker-step1">
         <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
             <a-image
@@ -155,17 +165,18 @@
         </a-entity>
     </a-marker>
 
-    <!-- Step 2 — KANJI marker (built-in, no file needed) -->
+    <!-- STEP 2 — built-in KANJI preset; <a-plane> replaces <a-text> to avoid font crash -->
     <a-marker preset="kanji" id="marker-step2">
         <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 3000">
-            <a-text value="GREAT JOB!" color="#00FF88"
-                position="0 0.5 0" rotation="-90 0 0"
-                align="center" scale="2 2 2">
-            </a-text>
+            <a-plane
+                color="#00FF88"
+                position="0 0.1 0" rotation="-90 0 0"
+                width="2" height="0.6">
+            </a-plane>
         </a-entity>
     </a-marker>
 
-    <!-- Steps 3 & 4 — custom pattern markers (you must host these .patt files) -->
+    <!-- STEPS 3 & 4 — custom .patt files; host them in the same folder as this HTML -->
     <a-marker type="pattern" url="pattern-step3.patt" id="marker-step3">
         <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
             <a-image src="step3.png" position="0 0.5 0" rotation="-90 0 0" scale="1.5 1.5 1.5"></a-image>
@@ -182,44 +193,47 @@
 </a-scene>
 
 <script>
-    // ── Config ─────────────────────────────────────────────────────────────────
-    const DEBUG_MODE   = true;   // set false for real geo-check
+    // ── Config ──────────────────────────────────────────
+    const DEBUG_MODE   = true;   // flip to false for real geo-check
     const SIBIRIUS_LAT = 61.001272;
     const SIBIRIUS_LON = 68.994418;
     const GEO_RADIUS_KM = 0.1;
 
-    // ── State ──────────────────────────────────────────────────────────────────
+    // ── State ───────────────────────────────────────────
     let currentStep = 1;
-    let stepLocked  = false; // prevents double-trigger in the 500ms interval
+    let stepLocked  = false;
 
     const questSteps = [
-        { title: "Шаг 1: Велопарковка",     text: "Найди маркер HIRO около велопарковки Сибириуса." },
-        { title: "Шаг 2: Главный вход",      text: "Отлично! Теперь иди к главному входу и найди маркер с символом." },
-        { title: "Шаг 3: Кофемашина в холле",text: "Зайди внутрь и найди кастомный маркер около кофемашины." },
-        { title: "Шаг 4: Коворкинг",         text: "Поднимись на второй этаж. Найди финальный маркер в коворкинге." }
+        { title: "Шаг 1: Велопарковка",      text: "Найди маркер HIRO около велопарковки Сибириуса." },
+        { title: "Шаг 2: Главный вход",       text: "Отлично! Иди к главному входу и найди маркер KANJI." },
+        { title: "Шаг 3: Кофемашина в холле", text: "Зайди внутрь и найди кастомный маркер около кофемашины." },
+        { title: "Шаг 4: Коворкинг",          text: "Поднимись на второй этаж. Найди финальный маркер в коворкинге." }
     ];
 
-    // ── Toast helper (replaces alert — alert blocks camera render!) ────────────
+    const toastMessages = [
+        'Велопарковка засчитана! 🔥 Шаг 2.',
+        'Главный вход засчитан! 🚀 Идём внутрь.',
+        'Кофемашина найдена! ⚡ Последний рывок.',
+        'КВЕСТ ПРОЙДЕН! ТЫ КРАСАВЧИК! 🎉'
+    ];
+
+    // ── Toast (non-blocking, replaces alert) ────────────
     let toastTimer = null;
-    function showToast(msg, durationMs = 2800) {
+    function showToast(msg, ms = 2800) {
         const el = document.getElementById('toast');
         el.textContent = msg;
         el.classList.add('show');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => el.classList.remove('show'), durationMs);
+        toastTimer = setTimeout(() => el.classList.remove('show'), ms);
     }
 
-    // ── Geo helpers ────────────────────────────────────────────────────────────
+    // ── Geo ─────────────────────────────────────────────
     function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2)**2 +
-                  Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+        const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    // ── GPS / Debug init ───────────────────────────────────────────────────────
     if (DEBUG_MODE) {
         document.getElementById('status-text').innerText = 'Локация подтверждена (Тест)';
         document.getElementById('start-btn').disabled = false;
@@ -231,34 +245,32 @@
                     document.getElementById('status-text').innerText = 'Ты в радиусе Сибириуса! ✅';
                     document.getElementById('start-btn').disabled = false;
                 } else {
-                    document.getElementById('status-text').innerText =
-                        `Слишком далеко. До Сибириуса: ${d.toFixed(2)} км`;
+                    document.getElementById('status-text').innerText = `Слишком далеко. До Сибириуса: ${d.toFixed(2)} км`;
                 }
             },
-            () => {
-                document.getElementById('status-text').innerText = 'Ошибка GPS. Разреши доступ в браузере.';
-            },
+            () => { document.getElementById('status-text').innerText = 'Ошибка GPS. Разреши доступ в браузере.'; },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     }
 
-    // ── Start button ───────────────────────────────────────────────────────────
+    // ── Start ───────────────────────────────────────────
     document.getElementById('start-btn').addEventListener('click', () => {
         document.getElementById('geo-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
         updateQuestUI();
     });
 
-    // ── Quest logic ────────────────────────────────────────────────────────────
+    // ── Quest logic ─────────────────────────────────────
     function updateQuestUI() {
-        const data = questSteps[currentStep - 1];
-        document.getElementById('score').innerText    = currentStep;
-        document.getElementById('quest-title').innerText = data.title;
-        document.getElementById('quest-text').innerText  = data.text;
+        const d = questSteps[currentStep - 1];
+        document.getElementById('score').innerText      = currentStep;
+        document.getElementById('quest-title').innerText = d.title;
+        document.getElementById('quest-text').innerText  = d.text;
     }
 
     function nextStep() {
-        stepLocked = true; // lock until toast clears
+        stepLocked = true;
+        showToast(toastMessages[currentStep - 1]);
         currentStep++;
         setTimeout(() => {
             stepLocked = false;
@@ -268,33 +280,16 @@
                 document.getElementById('game-screen').style.display = 'none';
                 document.getElementById('final-screen').style.display = 'flex';
             }
-        }, 3000); // match toast duration
+        }, 3000);
     }
 
-    // FIX 5: Use object3D.visible polling — more reliable than A-Frame events on mobile
-    const toastMessages = [
-        'Велопарковка засчитана! 🔥 Переходим к шагу 2.',
-        'Главный вход засчитан! 🚀 Идём внутрь.',
-        'Кофемашина найдена! ⚡ Остался последний рывок.',
-        'КВЕСТ ПРОЙДЕН! ТЫ КРАСАВЧИК! 🎉'
-    ];
-
+    // ── Marker polling (object3D.visible = true only when camera sees it) ──
     setInterval(() => {
         if (document.getElementById('game-screen').style.display !== 'block') return;
         if (stepLocked) return;
-
-        const markers = [
-            document.getElementById('marker-step1'),
-            document.getElementById('marker-step2'),
-            document.getElementById('marker-step3'),
-            document.getElementById('marker-step4'),
-        ];
-
-        const m = markers[currentStep - 1];
-        if (m && m.object3D && m.object3D.visible) {
-            showToast(toastMessages[currentStep - 1]);
-            nextStep();
-        }
+        const markerIds = ['marker-step1','marker-step2','marker-step3','marker-step4'];
+        const m = document.getElementById(markerIds[currentStep - 1]);
+        if (m && m.object3D && m.object3D.visible) nextStep();
     }, 500);
 </script>
 </body>
