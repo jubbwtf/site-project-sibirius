@@ -6,291 +6,321 @@
     <title>Сибириус Квест AR</title>
 
     <!--
-      FIX 1: CORRECT VERSION PAIR — this is the #1 cause of all your errors.
-        - A-Frame 1.6.0  (from aframe.io — not blocked in Russia)
-        - AR.js 3.4.7    (the ONLY version that works with A-Frame 1.6.0)
-        - AR.js via jsdelivr.net/gh/ — GitHub-backed CDN, accessible in Russia
-      
-      FIX 2: aframe-ar.min.js (marker only, no NFT) — smaller, faster, no dead code
+        WORKING COMBO (confirmed by official AR.js docs):
+        - aframe 1.6.0 from aframe.io (not blocked in Russia)
+        - AR.js 3.4.7 from jsdelivr gh (works in Russia, confirmed by user)
     -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.min.js"></script>
 
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* THE FIX FOR CAMERA: copy exactly what official AR.js examples use.
+           No fancy CSS on body/html. No overflow:hidden on a wrapper.
+           Just margin:0 overflow:hidden directly on body. That's it. */
+        * { box-sizing: border-box; }
+        body { margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
-        body, html {
-            width: 100%; height: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overflow: hidden;
-            background: #000;
-        }
-
-        /* Camera feed — fills entire screen on iOS + Android */
-        video, #arjs-video {
-            width: 100vw !important;
-            height: 100vh !important;
-            position: fixed !important;
-            top: 0 !important; left: 0 !important;
-            object-fit: cover !important;
-            z-index: 0 !important;
-        }
-        .a-canvas {
-            width: 100vw !important;
-            height: 100vh !important;
-            position: fixed !important;
-            top: 0 !important; left: 0 !important;
-            z-index: 1 !important;
-            background: transparent !important;
-        }
-
-        /* Hide A-Frame chrome */
+        /* Kill A-Frame chrome that adds overhead */
         .a-enter-vr, .a-loader-title, .a-orientation-modal { display: none !important; }
 
-        /* ── Screens ───────────────────────────────────── */
-        .fullscreen-overlay {
-            position: fixed; top: 0; left: 0;
-            width: 100vw; height: 100vh;
+        /* ── UI panels — positioned OVER the AR scene, pointer-events only where needed ── */
+
+        #geo-screen {
+            position: fixed; inset: 0;
             background: #121212;
             z-index: 9999;
             display: flex; justify-content: center; align-items: center;
             padding: 28px;
         }
-        .container { width: 100%; max-width: 400px; text-align: center; }
 
-        h2 { color: #00FF88; font-size: 26px; font-weight: 700; margin-bottom: 12px; }
-        h3 { color: #00FF88; font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-        p  { color: #E0E0E0; font-size: 15px; line-height: 1.6; margin: 6px 0; }
-
-        .btn {
-            width: 100%; padding: 16px;
-            background: #00FF88; color: #121212;
-            border: none; border-radius: 14px;
-            font-size: 16px; font-weight: 700;
-            cursor: pointer; margin-top: 18px;
-            transition: opacity .15s;
+        #final-screen {
+            position: fixed; inset: 0;
+            background: #121212;
+            z-index: 9999;
+            display: none;
+            justify-content: center; align-items: center;
+            padding: 28px;
         }
-        .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
-        .btn:not(:disabled):active { opacity: .75; }
 
-        /* ── In-game HUD ───────────────────────────────── */
-        .game-overlay {
+        /* HUD card — floats over the camera, no background behind it except the card itself */
+        #game-screen {
             position: fixed;
             bottom: 32px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px;
-            background: rgba(18,18,18,0.93);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border-radius: 24px;
-            padding: 22px 24px;
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 12px 40px rgba(0,0,0,.7);
+            width: 90%; max-width: 420px;
+            background: rgba(15, 15, 15, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 20px;
+            padding: 20px 22px 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
             text-align: center;
             z-index: 9998;
             display: none;
-        }
-        .progress-bar {
-            font-size: 12px; color: #00FF88;
-            letter-spacing: 1px; text-transform: uppercase;
-            font-weight: 700; margin-bottom: 10px;
-        }
-        .hint { color: #00FF88; font-size: 13px; font-weight: 600; margin-top: 10px; }
-
-        /* ── Toast — replaces alert() which kills camera thread ─ */
-        .toast {
-            position: fixed;
-            top: 40px; left: 50%; transform: translateX(-50%);
-            background: #00FF88; color: #121212;
-            padding: 14px 26px; border-radius: 50px;
-            font-size: 15px; font-weight: 700;
-            z-index: 99999;
-            box-shadow: 0 6px 24px rgba(0,255,136,.45);
-            opacity: 0; transition: opacity .3s;
+            /* IMPORTANT: pointer-events none everywhere except the card itself
+               so touch events reach the AR canvas underneath */
             pointer-events: none;
-            white-space: nowrap;
-            max-width: 90vw; text-align: center;
         }
-        .toast.show { opacity: 1; }
+        /* Only the card itself gets events */
+        #game-screen > * { pointer-events: auto; }
+
+        .container { width: 100%; max-width: 380px; text-align: center; }
+        h2 { color: #00FF88; font-size: 24px; font-weight: 700; margin: 0 0 10px; }
+        h3 { color: #00FF88; font-size: 17px; font-weight: 600; margin: 0 0 6px; }
+        p  { color: #D0D0D0; font-size: 14px; line-height: 1.55; margin: 4px 0; }
+
+        .progress {
+            font-size: 11px; color: #00FF88; letter-spacing: 1.5px;
+            text-transform: uppercase; font-weight: 700; margin-bottom: 8px;
+        }
+        .hint { color: #00CC66; font-size: 13px; font-weight: 600; margin-top: 10px; }
+
+        .btn {
+            display: block; width: 100%; padding: 15px;
+            background: #00FF88; color: #0a0a0a;
+            border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            margin-top: 18px; transition: opacity .15s;
+            pointer-events: auto;
+        }
+        .btn:disabled { background: #2a2a2a; color: #555; cursor: not-allowed; }
+        .btn:not(:disabled):active { opacity: .75; }
+
+        /* Toast — non-blocking, replaces alert() */
+        #toast {
+            position: fixed;
+            top: 36px; left: 50%; transform: translateX(-50%);
+            background: #00FF88; color: #0a0a0a;
+            padding: 13px 24px; border-radius: 40px;
+            font-size: 14px; font-weight: 700;
+            z-index: 99999; pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,255,136,.35);
+            opacity: 0; transition: opacity .25s;
+            white-space: nowrap; max-width: 88vw; text-align: center;
+        }
+        #toast.show { opacity: 1; }
+
+        /* Marker cheat-sheet — tiny top bar showing what to look for */
+        #marker-hint {
+            position: fixed;
+            top: 12px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: #fff; font-size: 12px; font-weight: 600;
+            padding: 6px 14px; border-radius: 20px;
+            z-index: 9997; display: none;
+            pointer-events: none;
+        }
     </style>
 </head>
-<body>
 
-<!-- Screen 1: GPS check -->
-<div id="geo-screen" class="fullscreen-overlay">
+<!-- THE OTHER CAMERA FIX: body gets margin/overflow, NOT a wrapper div -->
+<body style="margin: 0; overflow: hidden;">
+
+<!-- Screen 1: GPS / start -->
+<div id="geo-screen">
     <div class="container">
-        <h2>Сибириус Квест</h2>
-        <p id="status-text">Синхронизация с GPS…</p>
+        <h2>🗺️ Сибириус Квест</h2>
+        <p id="status-text" style="margin-bottom:4px;">Синхронизация с GPS…</p>
+        <p style="font-size:12px;color:#555;">Разреши доступ к камере и геолокации</p>
         <button id="start-btn" class="btn" disabled>Начать квест</button>
     </div>
 </div>
 
-<!-- Screen 2: In-game HUD -->
-<div id="game-screen" class="game-overlay">
-    <div class="progress-bar">Задание: <span id="score">1</span> из 4</div>
-    <h3 id="quest-title">Загрузка…</h3>
-    <p id="quest-text">Загрузка…</p>
+<!-- Screen 2: In-game HUD (floats over camera) -->
+<div id="game-screen">
+    <div class="progress">Задание <span id="score">1</span> / 4</div>
+    <h3 id="quest-title"></h3>
+    <p id="quest-text"></p>
     <p class="hint">📸 Наведи камеру на маркер</p>
 </div>
 
+<!-- Marker name hint bar -->
+<div id="marker-hint"></div>
+
 <!-- Screen 3: Finish -->
-<div id="final-screen" class="fullscreen-overlay" style="display:none;">
+<div id="final-screen">
     <div class="container">
         <h2>Квест пройден! 🎉</h2>
-        <p>Ты успешно отыскал все скрытые AR-метки в Сибириусе!</p>
+        <p style="margin-top:10px;">Ты отыскал все AR-метки Сибириуса. Красавчик!</p>
     </div>
 </div>
 
-<!-- Non-blocking toast notification -->
-<div id="toast" class="toast"></div>
+<!-- Toast -->
+<div id="toast"></div>
 
 <!--
-  FIX 3: vr-mode-ui disabled → no WebVR polyfill load (faster startup, no black half-screen)
-  FIX 4: No <a-text> anywhere → eliminates the Roboto-msdf.json 404 crash that broke markers
-          Using <a-plane> with color instead — zero external font dependency
+    KEY DECISIONS:
+    1. vr-mode-ui disabled = no WebVR polyfill = faster + no half-black screen
+    2. NO custom .patt files for steps 3-4 — using only built-in presets
+       Built-in presets: "hiro", "kanji" — those are the only two guaranteed ones.
+       For steps 3-4 we use barcode markers (matrix type) which need NO files at all.
+       Barcode markers are just printed numbers inside a square frame.
+    3. No <a-text> anywhere (kills font fetch → cascading crash)
+    4. NO embedded attribute — use the scene directly on body per official docs
 -->
 <a-scene
-    embedded
     vr-mode-ui="enabled: false"
-    arjs="sourceType: webcam; debugUIEnabled: false;"
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
     loading-screen="enabled: false"
-    renderer="logarithmicDepthBuffer: true; precision: medium;"
+    renderer="logarithmicDepthBuffer: true; precision: medium; antialias: false;"
 >
-    <!-- STEP 1 — built-in HIRO preset, no files needed -->
-    <a-marker preset="hiro" id="marker-step1">
-        <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
-            <a-image
-                src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg"
-                position="0 0.5 0" rotation="-90 0 0" scale="1.5 1.5 1.5">
-            </a-image>
-        </a-entity>
+    <!-- STEP 1: HIRO preset marker (print: search "HIRO AR marker") -->
+    <a-marker preset="hiro" id="m1">
+        <a-sphere color="#00FF88" radius="0.4" position="0 0.4 0"
+            animation="property: rotation; to: 0 360 0; loop: true; dur: 3000">
+        </a-sphere>
+        <a-ring color="#00FF88" radius-inner="0.5" radius-outer="0.6"
+            rotation="-90 0 0" position="0 0.05 0">
+        </a-ring>
     </a-marker>
 
-    <!-- STEP 2 — built-in KANJI preset; <a-plane> replaces <a-text> to avoid font crash -->
-    <a-marker preset="kanji" id="marker-step2">
-        <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 3000">
-            <a-plane
-                color="#00FF88"
-                position="0 0.1 0" rotation="-90 0 0"
-                width="2" height="0.6">
-            </a-plane>
-        </a-entity>
+    <!-- STEP 2: KANJI preset marker (print: search "KANJI AR marker") -->
+    <a-marker preset="kanji" id="m2">
+        <a-box color="#FF6B35" width="0.6" height="0.6" depth="0.6" position="0 0.3 0"
+            animation="property: rotation; to: 360 360 0; loop: true; dur: 3000">
+        </a-box>
     </a-marker>
 
-    <!-- STEPS 3 & 4 — custom .patt files; host them in the same folder as this HTML -->
-    <a-marker type="pattern" url="pattern-step3.patt" id="marker-step3">
-        <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
-            <a-image src="step3.png" position="0 0.5 0" rotation="-90 0 0" scale="1.5 1.5 1.5"></a-image>
-        </a-entity>
+    <!-- STEP 3: Barcode matrix marker #1 (print: search "AR.js barcode marker 1")
+         These need NO .patt file — they're built into AR.js via matrixCodeType: 3x3 -->
+    <a-marker type="barcode" value="1" id="m3">
+        <a-cone color="#9B59B6" radius-bottom="0.4" radius-top="0" height="0.8"
+            position="0 0.4 0"
+            animation="property: rotation; to: 0 360 0; loop: true; dur: 2500">
+        </a-cone>
     </a-marker>
 
-    <a-marker type="pattern" url="pattern-step4.patt" id="marker-step4">
-        <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
-            <a-image src="step4.png" position="0 0.5 0" rotation="-90 0 0" scale="2 2 2"></a-image>
-        </a-entity>
+    <!-- STEP 4: Barcode matrix marker #2 (print: search "AR.js barcode marker 2") -->
+    <a-marker type="barcode" value="2" id="m4">
+        <a-torus color="#F1C40F" radius="0.3" radius-tubular="0.05"
+            position="0 0.3 0"
+            animation="property: rotation; to: 0 360 360; loop: true; dur: 2000">
+        </a-torus>
     </a-marker>
 
     <a-entity camera></a-entity>
 </a-scene>
 
 <script>
-    // ── Config ──────────────────────────────────────────
-    const DEBUG_MODE   = true;   // flip to false for real geo-check
-    const SIBIRIUS_LAT = 61.001272;
-    const SIBIRIUS_LON = 68.994418;
-    const GEO_RADIUS_KM = 0.1;
+// ── Config ────────────────────────────────────────────────
+const DEBUG_MODE   = true;
+const SIBIRIUS_LAT = 61.001272;
+const SIBIRIUS_LON = 68.994418;
+const GEO_RADIUS_KM = 0.1;
 
-    // ── State ───────────────────────────────────────────
-    let currentStep = 1;
-    let stepLocked  = false;
-
-    const questSteps = [
-        { title: "Шаг 1: Велопарковка",      text: "Найди маркер HIRO около велопарковки Сибириуса." },
-        { title: "Шаг 2: Главный вход",       text: "Отлично! Иди к главному входу и найди маркер KANJI." },
-        { title: "Шаг 3: Кофемашина в холле", text: "Зайди внутрь и найди кастомный маркер около кофемашины." },
-        { title: "Шаг 4: Коворкинг",          text: "Поднимись на второй этаж. Найди финальный маркер в коворкинге." }
-    ];
-
-    const toastMessages = [
-        'Велопарковка засчитана! 🔥 Шаг 2.',
-        'Главный вход засчитан! 🚀 Идём внутрь.',
-        'Кофемашина найдена! ⚡ Последний рывок.',
-        'КВЕСТ ПРОЙДЕН! ТЫ КРАСАВЧИК! 🎉'
-    ];
-
-    // ── Toast (non-blocking, replaces alert) ────────────
-    let toastTimer = null;
-    function showToast(msg, ms = 2800) {
-        const el = document.getElementById('toast');
-        el.textContent = msg;
-        el.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+// ── Quest data ────────────────────────────────────────────
+const steps = [
+    {
+        title: "Шаг 1: Велопарковка",
+        text:  "Найди маркер HIRO около велопарковки.",
+        hint:  "Маркер: HIRO (квадрат с рисунком)",
+        markerId: "m1",
+        toast: "Велопарковка! 🔥 Идём ко входу."
+    },
+    {
+        title: "Шаг 2: Главный вход",
+        text:  "Найди маркер KANJI у главного входа.",
+        hint:  "Маркер: KANJI (японский символ)",
+        markerId: "m2",
+        toast: "Главный вход! 🚀 Заходим внутрь."
+    },
+    {
+        title: "Шаг 3: Кофемашина",
+        text:  "Найди маркер «1» у кофемашины в холле.",
+        hint:  "Маркер: штрихкод №1 (распечатан на месте)",
+        markerId: "m3",
+        toast: "Кофемашина найдена! ⚡ Последний шаг."
+    },
+    {
+        title: "Шаг 4: Коворкинг",
+        text:  "Поднимись на 2-й этаж. Найди маркер «2» в коворкинге.",
+        hint:  "Маркер: штрихкод №2 (распечатан на месте)",
+        markerId: "m4",
+        toast: "КВЕСТ ПРОЙДЕН! ТЫ КРАСАВЧИК! 🎉"
     }
+];
 
-    // ── Geo ─────────────────────────────────────────────
-    function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
+let currentStep = 0;   // 0-indexed
+let locked = false;
 
-    if (DEBUG_MODE) {
-        document.getElementById('status-text').innerText = 'Локация подтверждена (Тест)';
-        document.getElementById('start-btn').disabled = false;
-    } else {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const d = getDistance(pos.coords.latitude, pos.coords.longitude, SIBIRIUS_LAT, SIBIRIUS_LON);
-                if (d <= GEO_RADIUS_KM) {
-                    document.getElementById('status-text').innerText = 'Ты в радиусе Сибириуса! ✅';
-                    document.getElementById('start-btn').disabled = false;
-                } else {
-                    document.getElementById('status-text').innerText = `Слишком далеко. До Сибириуса: ${d.toFixed(2)} км`;
-                }
-            },
-            () => { document.getElementById('status-text').innerText = 'Ошибка GPS. Разреши доступ в браузере.'; },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-    }
+// ── Toast ─────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, ms = 2800) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
 
-    // ── Start ───────────────────────────────────────────
-    document.getElementById('start-btn').addEventListener('click', () => {
-        document.getElementById('geo-screen').style.display = 'none';
-        document.getElementById('game-screen').style.display = 'block';
-        updateQuestUI();
-    });
+// ── Geo ───────────────────────────────────────────────────
+function dist(la1, lo1, la2, lo2) {
+    const R = 6371, dL = (la2-la1)*Math.PI/180, dO = (lo2-lo1)*Math.PI/180;
+    const a = Math.sin(dL/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
-    // ── Quest logic ─────────────────────────────────────
-    function updateQuestUI() {
-        const d = questSteps[currentStep - 1];
-        document.getElementById('score').innerText      = currentStep;
-        document.getElementById('quest-title').innerText = d.title;
-        document.getElementById('quest-text').innerText  = d.text;
-    }
-
-    function nextStep() {
-        stepLocked = true;
-        showToast(toastMessages[currentStep - 1]);
-        currentStep++;
-        setTimeout(() => {
-            stepLocked = false;
-            if (currentStep <= 4) {
-                updateQuestUI();
+// ── Init ──────────────────────────────────────────────────
+if (DEBUG_MODE) {
+    document.getElementById('status-text').textContent = 'Режим теста — локация OK ✅';
+    document.getElementById('start-btn').disabled = false;
+} else {
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const d = dist(pos.coords.latitude, pos.coords.longitude, SIBIRIUS_LAT, SIBIRIUS_LON);
+            if (d <= GEO_RADIUS_KM) {
+                document.getElementById('status-text').textContent = 'Ты в Сибириусе! ✅';
+                document.getElementById('start-btn').disabled = false;
             } else {
-                document.getElementById('game-screen').style.display = 'none';
-                document.getElementById('final-screen').style.display = 'flex';
+                document.getElementById('status-text').textContent = `До Сибириуса: ${d.toFixed(2)} км`;
             }
-        }, 3000);
-    }
+        },
+        () => { document.getElementById('status-text').textContent = 'Ошибка GPS — разреши доступ в браузере'; },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+}
 
-    // ── Marker polling (object3D.visible = true only when camera sees it) ──
-    setInterval(() => {
-        if (document.getElementById('game-screen').style.display !== 'block') return;
-        if (stepLocked) return;
-        const markerIds = ['marker-step1','marker-step2','marker-step3','marker-step4'];
-        const m = document.getElementById(markerIds[currentStep - 1]);
-        if (m && m.object3D && m.object3D.visible) nextStep();
-    }, 500);
+document.getElementById('start-btn').addEventListener('click', () => {
+    document.getElementById('geo-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('marker-hint').style.display = 'block';
+    showStep();
+});
+
+// ── Quest ─────────────────────────────────────────────────
+function showStep() {
+    const s = steps[currentStep];
+    document.getElementById('score').textContent      = currentStep + 1;
+    document.getElementById('quest-title').textContent = s.title;
+    document.getElementById('quest-text').textContent  = s.text;
+    document.getElementById('marker-hint').textContent = s.hint;
+}
+
+function advance() {
+    locked = true;
+    toast(steps[currentStep].toast);
+    currentStep++;
+
+    setTimeout(() => {
+        locked = false;
+        if (currentStep < steps.length) {
+            showStep();
+        } else {
+            document.getElementById('game-screen').style.display   = 'none';
+            document.getElementById('marker-hint').style.display   = 'none';
+            document.getElementById('final-screen').style.display  = 'flex';
+        }
+    }, 3000);
+}
+
+// ── Marker polling ────────────────────────────────────────
+// object3D.visible = true ONLY when the camera actually sees the marker
+setInterval(() => {
+    if (locked) return;
+    if (document.getElementById('game-screen').style.display !== 'block') return;
+    const m = document.getElementById(steps[currentStep].markerId);
+    if (m && m.object3D && m.object3D.visible) advance();
+}, 500);
 </script>
 </body>
 </html>
