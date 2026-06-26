@@ -8,78 +8,40 @@
     <script src="https://unpkg.com/aframe@1.3.0/dist/aframe-master.min.js"></script>
     <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
     
-<style>
+    <style>
         body, html { 
-            margin: 0; 
-            padding: 0; 
-            width: 100%; 
-            height: 100%; 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            overflow: hidden;
-            background-color: #000000 !important; /* Убираем белую подложку самого браузера */
+            overflow: hidden; background-color: #000000 !important; 
         }
         
-/* Полноэкранный адаптивный видеопоток камеры */
         video, #arjs-video {
-            width: 100vw !important;
-            height: 100vh !important;
-            min-width: 100vw !important;
-            min-height: 100vh !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            margin: 0 !important; /* Убиваем кривые отступы, которые генерирует AR.js */
-            padding: 0 !important;
-            transform: none !important;
-            object-fit: cover !important;
-            z-index: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            min-width: 100vw !important; min-height: 100vh !important;
+            position: fixed !important; top: 0 !important; left: 0 !important;
+            margin: 0 !important; padding: 0 !important;
+            transform: none !important; object-fit: cover !important; z-index: 0 !important;
         }
 
-        /* Холст 3D-графики */
         .a-canvas {
-            width: 100vw !important;
-            height: 100vh !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            margin: 0 !important;
-            z-index: 1 !important;
-            background-color: transparent !important;
+            width: 100vw !important; height: 100vh !important;
+            position: fixed !important; top: 0 !important; left: 0 !important;
+            margin: 0 !important; z-index: 1 !important; background-color: transparent !important;
         }
         
-        /* Плотные экраны-заглушки (Старт и Финал) */
         .fullscreen-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: #121212;
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-sizing: border-box;
-            padding: 20px;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #121212; z-index: 9999; display: flex;
+            justify-content: center; align-items: center; box-sizing: border-box; padding: 20px;
         }
 
-        /* Игровая карточка с заданиями поверх камеры */
         .game-overlay {
-            position: fixed;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 400px;
-            background: rgba(20, 20, 20, 0.92);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 24px;
-            padding: 24px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.7);
-            text-align: center;
-            z-index: 9998;
-            box-sizing: border-box;
-            display: none;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.92);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px; padding: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+            text-align: center; z-index: 9998; box-sizing: border-box;
+            display: none; border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .container { width: 100%; }
@@ -87,23 +49,13 @@
         p { line-height: 1.6; color: #E0E0E0; font-size: 16px; margin: 5px 0; }
         
         .btn { 
-            width: 100%; 
-            padding: 16px; 
-            background: #00FF88; 
-            color: #121212; 
-            border: none; 
-            border-radius: 14px; 
-            font-size: 16px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: 0.2s;
-            margin-top: 15px;
+            width: 100%; padding: 16px; background: #00FF88; color: #121212; 
+            border: none; border-radius: 14px; font-size: 16px; 
+            font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 15px;
         }
         .btn:disabled { background: #333333; color: #666666; cursor: not-allowed; }
 
         .progress-bar { font-size: 13px; color: #00FF88; letter-spacing: 1px; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; }
-        
-        /* Полностью зачищаем служебные оверлеи A-Frame, которые дают белую пелену */
         .a-enter-vr, .a-loader-title { display: none !important; }
     </style>
 </head>
@@ -121,7 +73,7 @@
         <div class="progress-bar">Задание: <span id="score">1</span> из 4</div>
         <h3 id="quest-title">Загрузка...</h3>
         <p id="quest-text">Загрузка...</p>
-        <p style="color: #00FF88; font-size: 14px; font-weight: bold; margin-top: 12px; letter-spacing: 0.5px;">📸 Наведи камеру на маркер</p>
+        <p style="color: #00FF88; font-size: 14px; font-weight: bold; margin-top: 12px;">📸 Наведи камеру на маркер</p>
     </div>
 
     <div id="final-screen" class="fullscreen-overlay" style="display: none;">
@@ -131,36 +83,50 @@
         </div>
     </div>
 
-<a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" loading-screen="enabled: false;">
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" loading-screen="enabled: false;">
 
         <a-marker preset="hiro" id="marker-велопарковка">
-            <a-box position="0 0.5 0" material="color: #00FF88; opacity: 0.8;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
+            <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
+                <a-image src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" position="0 0.5 0" rotation="-90 0 0" scale="1.5 1.5 1.5"></a-image>
+            </a-entity>
         </a-marker>
 
         <a-marker preset="kanji" id="marker-вход">
-            <a-box position="0 0.5 0" material="color: #0088FF; opacity: 0.8;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
+            <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 3000">
+                <a-text value="GREAT JOB!" color="#00FF88" position="0 0.5 0" rotation="-90 0 0" align="center" scale="2 2 2"></a-text>
+            </a-entity>
+        </a-marker>
+
+        <a-marker type="pattern" src="pattern-step3.patt" id="marker-стенд">
+            <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
+                <a-image src="step3.png" position="0 0.5 0" rotation="-90 0 0" scale="1.5 1.5 1.5"></a-image>
+            </a-entity>
+        </a-marker>
+
+        <a-marker type="pattern" src="pattern-step4.patt" id="marker-коворкинг">
+            <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
+                <a-image src="step4.png" position="0 0.5 0" rotation="-90 0 0" scale="2 2 2"></a-image>
+            </a-entity>
         </a-marker>
 
         <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-        // Глобальные настройки (Режим отладки и новые точные координаты)
-        const DEBUG_MODE = false; 
+        const DEBUG_MODE = true; 
         const SIBIRIUS_LAT = 61.001272;
         const SIBIRIUS_LON = 68.994418;
         
         let currentStep = 1;
 
-        // Конфигурация шагов игры
+        // Полноценные шаги без фейковых таймеров
         const questSteps = [
             { title: "Шаг 1: Велопарковка", text: "Найди маркер HIRO около велопарковки Сибириуса.", markerId: "marker-велопарковка" },
             { title: "Шаг 2: Главный вход", text: "Отлично! Теперь дуй к главному входу и найди там маркер KANJI.", markerId: "marker-вход" },
-            { title: "Шаг 3: Стенд в холле", text: "Зайди внутрь здания. (Тестовый шаг, закроется сам через 5 секунд)", markerId: null },
-            { title: "Шаг 4: Коворкинг", text: "Поднимись на второй этаж. (Тестовый шаг, закроется сам через 5 секунд)", markerId: null }
+            { title: "Шаг 3: Стенд в холле", text: "Зайди внутрь здания и найди кастомный маркер на стенде.", markerId: "marker-стенд" },
+            { title: "Шаг 4: Коворкинг", text: "Поднимись на второй этаж. Найди финальный маркер в коворкинге.", markerId: "marker-коворкинг" }
         ];
 
-        // Математический расчет расстояния (Формула гаверсинусов)
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -169,14 +135,13 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
         }
 
-        // Проверка геопозиции пользователя перед стартом
         if (DEBUG_MODE) {
             document.getElementById('status-text').innerText = "Локация подтверждена (Тест)";
             document.getElementById('start-btn').disabled = false;
         } else {
             navigator.geolocation.getCurrentPosition((position) => {
                 const distance = getDistance(position.coords.latitude, position.coords.longitude, SIBIRIUS_LAT, SIBIRIUS_LON);
-                if (distance <= 0.1) { // Доступно в радиусе 100 метров от здания
+                if (distance <= 0.1) { 
                     document.getElementById('status-text').innerText = "Ты в радиусе Сибириуса!";
                     document.getElementById('start-btn').disabled = false;
                 } else {
@@ -187,14 +152,12 @@
             }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
         }
 
-        // Обработка запуска квеста (кликом по кнопке)
         document.getElementById('start-btn').addEventListener('click', () => {
             document.getElementById('geo-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'block';
             updateQuestUI();
         });
 
-        // Функция переключения шагов квеста
         function nextStep() {
             currentStep++;
             if (currentStep <= 4) {
@@ -205,21 +168,14 @@
             }
         }
 
-        // Обновление интерфейса текущего шага
         function updateQuestUI() {
             const data = questSteps[currentStep - 1];
             document.getElementById('score').innerText = currentStep;
             document.getElementById('quest-title').innerText = data.title;
             document.getElementById('quest-text').innerText = data.text;
-
-            if (!data.markerId) {
-                setTimeout(() => {
-                    nextStep();
-                }, 5000);
-            }
         }
 
-        // Обработчики успешного сканирования AR-маркеров
+        // Обработчики успешного сканирования AR-маркеров (теперь полноценные для всех 4)
         document.getElementById('marker-велопарковка').addEventListener('markerFound', () => {
             if (currentStep === 1) {
                 alert("Велопарковка засчитана! Переходим к шагу 2. 🔥");
@@ -229,7 +185,21 @@
 
         document.getElementById('marker-вход').addEventListener('markerFound', () => {
             if (currentStep === 2) {
-                alert("Главный вход засчитан! Квест пройден! 🚀");
+                alert("Главный вход засчитан! Идем внутрь. 🚀");
+                nextStep();
+            }
+        });
+
+        document.getElementById('marker-стенд').addEventListener('markerFound', () => {
+            if (currentStep === 3) {
+                alert("Стенд найден! Остался последний рывок. ⚡");
+                nextStep();
+            }
+        });
+
+        document.getElementById('marker-коворкинг').addEventListener('markerFound', () => {
+            if (currentStep === 4) {
+                // Финал!
                 nextStep();
             }
         });
